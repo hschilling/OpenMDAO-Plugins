@@ -3,7 +3,7 @@
 Package Metadata
 ================
 
-- **author:** Caitlin Cavenaugh
+- **author:** Caitlin Kavenaugh
 
 - **classifier**:: 
 
@@ -11,6 +11,12 @@ Package Metadata
     Topic :: Scientific/Engineering
 
 - **description-file:** README.txt
+
+- **entry_points**:: 
+
+    [openmdao.component]
+    NN_Sin.Sin=NN_Sin:Sin
+    NN_sin.Sin=NN_sin:Sin
 
 - **home-page:** https://github.com/OpenMDAO-Plugins
 
