@@ -5,12 +5,12 @@ Test the IPOPT optimizer component using a variety of
 Problem                     | Objective | nvars | Lin Cons | Nonlin Cons | 
 ==========================================================================
 Rosen Suzuki                | nonlinear |   4   |    0     |      3      | 
-IPOPT Manual #1             | linear    |   2   |    2     |      1      | 
+NEWSUMT Manual #1           | linear    |   2   |    2     |      1      | 
 Constrained Betts           | nonlinear |   2   |    1     |      0      | 
 Paraboloid                  | nonlinear |   2   |    0     |      0      ! 
 Paraboloid w lin constraint | nonlinear |   2   |    1     |      0      | 
 Paraboloid w lin constraint | nonlinear |   2   |  1 and 3 |      0      | 
-Paraboloid w non-lin const  | nonlinear |   2   |    0     |      1      | 
+Paraboloid w non-lin const  | nonlinear |   2   |    0     |   1 and 3   | 
 
 """
 
@@ -212,6 +212,7 @@ class IPOPTdriverParaboloidTestCase(unittest.TestCase):
         self.top.driver.workflow.add('comp')
 
         self.top.driver.print_level = 0
+        self.top.driver.set_option( 'suppress_all_output', 'yes' )
         
         map(self.top.driver.add_constraint,[ ])    
         
@@ -282,15 +283,16 @@ class IPOPTdriverParaboloidTestCase(unittest.TestCase):
                                self.top.comp.x[1], places=2)
 
     def test_invalid_parameter_name(self):
+        'Test an invalid parameter name'
         
         self.standard_setup()
         
-        self.top.driver.options = {'invalid_parameter_name':0,}
         try:
-            self.top.run()
+            self.top.driver.set_option( 'invalid_parameter_name', 0 )
+            #self.top.run()
         except ValueError, err:
             self.assertEqual(str(err),
-               "invalid_parameter_name is not a valid int option" )
+               "driver: invalid_parameter_name is not a valid option for Ipopt" )
         else:
             self.fail('ValueError expected')
 
@@ -317,12 +319,12 @@ class IPOPTdriverParaboloidTestCase(unittest.TestCase):
         
         self.standard_setup()
         
-        self.top.driver.options = {'invalid_parameter_type':{},}
+        self.top.driver.set_option( 'hessian_constant', {} )
         try:
             self.top.run()
         except ValueError, err:
             self.assertEqual(str(err), "driver: Cannot handle " + \
-              "option 'invalid_parameter_type' of type '<type 'dict'>'" )
+              "option 'hessian_constant' of type '<type 'dict'>'" )
         else:
             self.fail('ValueError expected')
         self.assertEqual( None, self.top.driver.status )
@@ -331,15 +333,16 @@ class IPOPTdriverParaboloidTestCase(unittest.TestCase):
         
         self.standard_setup()
 
-        self.top.driver.print_level = 0
-        self.top.driver.options = {'max_iter':-99}
         try:
-            self.top.run()
+            self.top.driver.max_iter = -99
         except ValueError, err:
             # This is the exception message that is thrown. It is misleading
             #   since it really is a valid name for an option, it just
             #   has an invalid value
-            self.assertEqual(str(err), "max_iter is not a valid int option" )
+            self.assertEqual(str(err),
+                             "driver: Variable 'max_iter' must be 0 "
+                             "<= an integer <= 9223372036854775807, "
+                             "but a value of -99 <type 'int'> was specified." )
         else:
             self.fail('ValueError expected')
         self.assertEqual( None, self.top.driver.status )
@@ -350,6 +353,7 @@ class IPOPTdriverParaboloidTestCase(unittest.TestCase):
         self.standard_setup()
 
         self.top.driver.print_level = 0
+        self.top.driver.set_option( 'suppress_all_output', 'yes' )
         self.top.driver.max_iter = 1
         
         self.top.run()
@@ -361,6 +365,7 @@ class IPOPTdriverParaboloidTestCase(unittest.TestCase):
         self.standard_setup()
 
         self.top.driver.print_level = 0 
+        self.top.driver.set_option( 'suppress_all_output', 'yes' )
         self.top.driver.max_cpu_time = 0.001
         
         self.top.run()
@@ -372,6 +377,7 @@ class IPOPTdriverParaboloidTestCase(unittest.TestCase):
         self.standard_setup()
 
         self.top.driver.print_level = 0
+        self.top.driver.set_option( 'suppress_all_output', 'yes' )
         self.top.driver.linear_solver = 'mumps'
         
         self.top.run()
@@ -389,6 +395,7 @@ class IPOPTdriverParaboloidTestCase(unittest.TestCase):
         self.standard_setup()
 
         self.top.driver.print_level = 0
+        self.top.driver.set_option( 'suppress_all_output', 'yes' )
         self.top.driver.obj_scaling_factor = 1.0+6
         
         self.top.run()
@@ -410,9 +417,16 @@ class IPOPTdriverParaboloidTestCase(unittest.TestCase):
             'comp.x[0] - 4.0 > 0.0',
             'comp.x[0] - 3.0 < 0.0',
             ] )
+        self.top.driver.set_option( 'suppress_all_output', 'yes' )
         self.top.driver.print_level = 0
+
+        # numpy throws an overflow warning that clutters
+        #  up the test output
+        numpy.seterr( over = 'ignore' )
         
         self.top.run()
+
+        numpy.seterr( over = 'warn' )
 
         self.assertEqual(
             IpoptReturnStatus.Infeasible_Problem_Detected,
@@ -485,6 +499,7 @@ class IPOPTdriverParaboloidWithLinearConstraintTestCase(unittest.TestCase):
         self.top.add('comp', ParaboloidComponent())
         self.top.add('driver', IPOPTdriver())
         self.top.driver.workflow.add('comp')
+        self.top.driver.set_option( 'suppress_all_output', 'yes' )
         self.top.driver.print_level = 0
         
     def tearDown(self):
@@ -495,7 +510,6 @@ class IPOPTdriverParaboloidWithLinearConstraintTestCase(unittest.TestCase):
     def standard_setup(self):
 
         self.top.driver.add_objective('comp.result')
-
         self.top.driver.add_parameter('comp.x[0]', -100.0, 100.0,
                                       fd_step = .00001)
         self.top.driver.add_parameter('comp.x[1]', -100.0, 100.0,
@@ -547,6 +561,7 @@ class IPOPTdriverParaboloidWithLinearEqualityTestCase(unittest.TestCase):
         self.top.add('comp', ParaboloidComponent())
         self.top.add('driver', IPOPTdriver())
         self.top.driver.workflow.add('comp')
+        self.top.driver.set_option( 'suppress_all_output', 'yes' )
         self.top.driver.print_level = 0
 
     def tearDown(self):
@@ -554,14 +569,16 @@ class IPOPTdriverParaboloidWithLinearEqualityTestCase(unittest.TestCase):
 
         self.top = None
 
-    def test_just_one_equality_constraint(self):
+    def standard_setup(self):
 
-        self.top.driver.add_objective( 'comp.result' )
-        
+        self.top.driver.add_objective('comp.result')
         self.top.driver.add_parameter('comp.x[0]', -100.0, 100.0,
                                       fd_step = .00001)
         self.top.driver.add_parameter('comp.x[1]', -100.0, 100.0,
                                       fd_step = .00001)
+    def test_just_one_equality_constraint(self):
+
+        self.standard_setup()
 
         map(self.top.driver.add_constraint,[
             'comp.x[0] - 4.0 = 0.0',
@@ -576,12 +593,7 @@ class IPOPTdriverParaboloidWithLinearEqualityTestCase(unittest.TestCase):
 
     def test_one_equality_one_inequality_constraint(self):
 
-        self.top.driver.add_objective( 'comp.result' )
-        
-        self.top.driver.add_parameter('comp.x[0]', -100.0, 100.0,
-                                      fd_step = .00001)
-        self.top.driver.add_parameter('comp.x[1]', -100.0, 100.0,
-                                      fd_step = .00001)
+        self.standard_setup()
 
         map(self.top.driver.add_constraint,[
             '- ( comp.x[0] - 2.0 )**2 - ( comp.x[1] - 3.0 )**2 + 4.0 > 0.0',
@@ -596,42 +608,33 @@ class IPOPTdriverParaboloidWithLinearEqualityTestCase(unittest.TestCase):
         self.assertAlmostEqual(3.0,
                                self.top.comp.x[1], places=2)
 
+    def test_incompatible_equality_constraints(self):
 
+        self.standard_setup()
 
-class IPOPTdriverParaboloidWithNonLinearConstraintTestCase(unittest.TestCase):
-    """test IPOPT optimizer component using a
-    paraboloid function constrained by a nonlinear constraint"""
-
-    def setUp(self):
-        '''setup test'''
-        self.top = set_as_top(Assembly())
-        self.top.add('comp', ParaboloidComponent())
-        self.top.add('driver', IPOPTdriver())
-        self.top.driver.workflow.add('comp')
-        self.top.driver.print_level = 0
-        
-    def tearDown(self):
-        '''tear down'''
-        self.top = None
-
-    def test_opt1(self):
-
-        self.top.driver.add_objective( 'comp.result' )
-
-        self.top.driver.add_parameter('comp.x[0]', -100.0, 100.0,
-                                      fd_step = .00001)
-        self.top.driver.add_parameter('comp.x[1]', -100.0, 100.0,
-                                      fd_step = .00001)
-
-        map(self.top.driver.add_constraint,
-            [ '- comp.x[0]**2 - ( comp.x[1] - 3.0 )**2 + 1.0 > 0.0' ] )
+        map(self.top.driver.add_constraint,[
+            'comp.x[0] - 4.0 = 0.0',
+            'comp.x[0] - 3.0 = 0.0',
+            ] )
         self.top.run()
+        self.assertEqual(
+            IpoptReturnStatus.Infeasible_Problem_Detected,
+            self.top.driver.status )
 
-        self.assertAlmostEqual(1.0, 
+    def test_two_equality_constraints(self):
+
+        self.standard_setup()
+
+        map(self.top.driver.add_constraint,[
+            'comp.x[0] - 4.0 = 0.0',
+            'comp.x[1] - 6.0 = 0.0',
+            ] )
+        self.top.run()
+        self.assertAlmostEqual(13.0, 
                                self.top.driver.eval_objective(), places=2)
-        self.assertAlmostEqual(1.0,
+        self.assertAlmostEqual(4.0,
                                self.top.comp.x[0], places=2)
-        self.assertAlmostEqual(3.0,
+        self.assertAlmostEqual(6.0,
                                self.top.comp.x[1], places=2)
 
 class IPOPTdriverRosenSuzukiTestCase(unittest.TestCase):
@@ -643,7 +646,8 @@ class IPOPTdriverRosenSuzukiTestCase(unittest.TestCase):
         self.top.add('comp', OptRosenSuzukiComponent())
         self.top.add('driver', IPOPTdriver())
         self.top.driver.workflow.add('comp')
-        self.top.driver.options = {'print_level':0,}
+        self.top.driver.set_option( 'suppress_all_output', 'yes' )
+        self.top.driver.print_level = 0
 
     def tearDown(self):
         '''tear down'''
@@ -697,6 +701,7 @@ class IPOPTdriverExample1FromManualTestCase(unittest.TestCase):
         self.top.add('comp', Example1FromManualComponent())
         self.top.add('driver', IPOPTdriver())
         self.top.driver.workflow.add('comp')
+        self.top.driver.set_option( 'suppress_all_output', 'yes' )
         self.top.driver.print_level = 0
         
     def tearDown(self):
@@ -743,7 +748,8 @@ class IPOPTdriverConstrainedBettsTestCase(unittest.TestCase):
         self.top.add('comp', ConstrainedBettsComponent())
         self.top.add('driver', IPOPTdriver())
         self.top.driver.workflow.add('comp')
-        self.top.driver.options = {'print_level':0,}
+        self.top.driver.set_option( 'suppress_all_output', 'yes' )
+        self.top.driver.print_level = 0
 
     def tearDown(self):
         '''tear down'''
@@ -774,7 +780,7 @@ class IPOPTdriverConstrainedBettsTestCase(unittest.TestCase):
 
     def test_setting_optional_options(self):
 
-        self.top.driver.options = {'derivative_test':'first-order',}
+        self.top.driver.set_option( 'derivative_test', 'first-order' )
         self.top.driver.add_objective( 'comp.result' )
 
         self.top.driver.add_parameter('comp.x[0]', 2.0, 50.0,
@@ -825,9 +831,6 @@ if __name__ == "__main__":
 
     suite = unittest.TestSuite()
 
-    suite.addTest(
-        unittest.makeSuite(
-        IPOPTdriverParaboloidWithNonLinearConstraintTestCase))
     suite.addTest(
         unittest.makeSuite(IPOPTdriverParaboloidTestCase))
     suite.addTest(

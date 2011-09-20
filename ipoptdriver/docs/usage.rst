@@ -1,35 +1,40 @@
-.. index:: NLPQ plugin overview
+.. index:: Ipopt plugin overview
 
-Overview of the NLPQ Plugin
+Overview of the Ipopt Plugin
 ==============================
 
-The NLPQ Plugin is a wrapper for the NLPQL Fortran source code written by 
-`Prof. Klaus Schittkowski
-<http://www.klaus-schittkowski.de/>`_
-of the University of Bayreuth. This source code was given to 
-Dr. Les Berke, retired Branch Chief in Structures and Materials Division, of 
-the NASA Glenn Research Center in the mid-1990's.
-
-The NLPQL code is a Fortran subroutine for solving constrained nonlinear programming problems. For more information see
-
-K. Schittkowski (1985/86): NLPQL: A FORTRAN subroutine solving constrained nonlinear programming problems, Annals of Operations Research, Vol. 5, 485-500
+The Ipopt Plugin is a wrapper for the 
+`Ipopt optimizer
+<http://www.coin-or.org/Ipopt/>`_. Ipopt (Interior Point OPTimizer) 
+is a software package for large-scale nonlinear optimization.
 
 The rest of this document assumes that you have already installed OpenMDAO and understand
 some of the basics of using OpenMDAO.
+This document also assumes that the user has some understanding of how Ipopt
+works. In particular, the user should aware of all the 
+`options for Ipopt
+<http://www.coin-or.org/Ipopt/documentation/node59.html#app.options_ref>`_.
 
-This document also assumes that the user has some understanding of how NLPQ
-works. For more information about NLPQ, the only reliable source is the source
-code itself in nlpq.f.
-
-.. note::  This plugin is only intended for use
-           at the NASA Glenn Research Center since it was 
-           the NLPQ Fortran code was only given for use
-           at the Center.
-
-.. note::  Currently it has only been tested on Linux.
+In addition, there is a 
+`short Ipopt tutorial is available
+<http://drops.dagstuhl.de/volltexte/2009/2089/pdf/09061.WaechterAndreas.Paper.2089.pdf>`_ 
+and a 
+`longer tutorial
+<https://projects.coin-or.org/Ipopt/export/2054/stable/3.9/Ipopt/doc/documentation.pdf>`_. 
 
 
-How Do I Use the NLPQ Plugin?
+.. note::  In addition to the requirement of having Ipopt installed, 
+           the Python wrapper,
+           `Pyipopt 
+           <http://code.google.com/p/pyipopt/>`_ needs to be installed.
+
+.. note::  Ipopt is built using a variety of third party libraries for 
+           solving equations. The OpenMDAO Ipopt driver
+           was tested using the following Ipopt third party libraries:
+           BLAS, LAPACK, MUMPS, ASL and Metis.
+
+
+How Do I Use the Ipopt Plugin?
 -------------------------------------
 
 Using the plugin is like using other optimizer drivers available in 
@@ -38,14 +43,14 @@ OpenMDAO.
 Here is some example code. The comments explain some details of the usage of this
 component.
 
-.. testcode:: NLPQdriver
+.. testcode:: Ipoptdriver
 
     import numpy
     
     from openmdao.main.api import Assembly, Component, set_as_top
     from openmdao.lib.datatypes.api import Array, Float
     
-    from nlpqdriver.nlpqdriver import NLPQdriver
+    from ipoptdriver.ipoptdriver import IPOPTdriver
     
     
     class ParaboloidComponent(Component):
@@ -71,25 +76,24 @@ component.
     
     top = set_as_top(Assembly())
     top.add('comp', ParaboloidComponent())
-    top.add('driver', NLPQdriver())
+    top.add('driver', IPOPTdriver())
     top.driver.workflow.add('comp')
-    top.driver.itmax = 30
-    top.driver.iprint = 0
-    
+    top.driver.print_level = 0
+
     top.driver.add_objective( 'comp.result' )
-    map(top.driver.add_parameter, 
-        ['comp.x[0]', 'comp.x[1]',])
-    top.driver.lower_bounds = [-100.0, -100.0]
-    top.driver.upper_bounds = [ 100.0,  100.0]
+
+    top.driver.add_parameter('comp.x[0]', -100.0, 100.0,
+                                      fd_step = .00001)
+    top.driver.add_parameter('comp.x[1]', -100.0, 100.0,
+                                      fd_step = .00001)
     
-    map(top.driver.add_constraint,[ 'comp.x[0] - 4.0 > 0.0' ] )
+    top.driver.add_constraint( 'comp.x[0] - 4.0 > 0.0' )
 
     top.run()
     
     print "%.4f %.4f %.4f" % ( top.comp.x[0], top.comp.x[1], top.driver.eval_objective() )
-
     
-.. testoutput:: NLPQdriver
+.. testoutput:: Ipoptdriver
    :hide:
    :options: -ELLIPSIS, +NORMALIZE_WHITESPACE
 

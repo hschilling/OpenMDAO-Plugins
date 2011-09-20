@@ -229,6 +229,10 @@ class IPOPTdriver(DriverUsesDerivatives):
                          iotype='in', desc='linear algebra package used' )
     
     options = Dict({
+        # this would just turn off copyright banner
+        #    self.nlp.str_option( "sb", 'yes' )
+        # to suppresses all output set the following to 'yes'
+        'suppress_all_output': 'no',
         'output_file' : "",
         'file_print_level' : 5,
         'print_user_options' : "no",
@@ -468,8 +472,21 @@ class IPOPTdriver(DriverUsesDerivatives):
         
         self.status = None
         self.obj = 0.0
-        self.zl = None        
+        # Lagrange multipliers for the upper and lower bound constraints
+        #  the pyipopt wrapper returns them to us. Need a place to
+        #  put the results but not used currently
+        self.zl = None  
         self.zu = None        
+
+    def set_option(self,name,value):
+        '''Set one of the options in the large dict
+        of options'''
+
+        if name in self.options:
+            self.options[ name ] = value
+        else :
+            self.raise_exception( '%s is not a valid option for Ipopt' % name, ValueError )
+        
 
     def start_iteration(self):
         """Perform initial setup before iteration loop begins."""
@@ -527,6 +544,7 @@ class IPOPTdriver(DriverUsesDerivatives):
             self._logger.error(str(err))
             raise
 
+
         # Set optimization options
         self.nlp.int_option( 'print_level', self.print_level )
         self.nlp.num_option( 'tol', self.tol )
@@ -550,10 +568,7 @@ class IPOPTdriver(DriverUsesDerivatives):
                
         # Ipopt does the Hessian calculation so we do not have to
         self.nlp.str_option( "hessian_approximation", "limited-memory" )
-        # this would just turn off copyright banner
-        #    self.nlp.str_option( "sb", 'yes' )
-        # to suppresses all output do this
-        self.nlp.str_option( "suppress_all_output", 'yes' )
+
         
     def continue_iteration(self):
         """Returns True if iteration should continue.
