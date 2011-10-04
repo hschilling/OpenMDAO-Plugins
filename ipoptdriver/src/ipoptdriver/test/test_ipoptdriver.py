@@ -27,6 +27,8 @@ Paraboloid w non-lin const  | nonlinear |   2   |    0     |   1 and 3   |
 # W0141 - Disable complaints Used builtin function 'map'
 # C0111 - Missing docstring
 
+from sys import maxint
+
 import unittest
 
 import numpy
@@ -341,8 +343,8 @@ class IPOPTdriverParaboloidTestCase(unittest.TestCase):
             #   has an invalid value
             self.assertEqual(str(err),
                              "driver: Variable 'max_iter' must be 0 "
-                             "<= an integer <= 9223372036854775807, "
-                             "but a value of -99 <type 'int'> was specified." )
+                             "<= an integer <= %d, "
+                             "but a value of -99 <type 'int'> was specified." % maxint )
         else:
             self.fail('ValueError expected')
         self.assertEqual( None, self.top.driver.status )
@@ -366,7 +368,7 @@ class IPOPTdriverParaboloidTestCase(unittest.TestCase):
 
         self.top.driver.print_level = 0 
         self.top.driver.set_option( 'suppress_all_output', 'yes' )
-        self.top.driver.max_cpu_time = 0.001
+        self.top.driver.max_cpu_time = 0.000001
         
         self.top.run()
         self.assertEqual( IpoptReturnStatus.Maximum_CpuTime_Exceeded,
